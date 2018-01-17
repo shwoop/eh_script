@@ -102,9 +102,9 @@ func gatherConfig() {
 	}
 }
 
-func query_api() error {
+func queryApi() error {
 	var (
-		err error
+		err    error
 		stream io.Reader
 	)
 	uri := strings.Join(append([]string{ehuri}, flag.Args()...), "/")
@@ -177,7 +177,7 @@ func query_api() error {
 
 func main() {
 	gatherConfig()
-	if err := query_api(); err != nil {
+	if err := queryApi(); err != nil {
 		stderr(err.Error())
 		os.Exit(1)
 	}
