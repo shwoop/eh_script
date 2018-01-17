@@ -23,12 +23,6 @@ var ehuri string
 var usr string
 var pass string
 
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
 func stderr(msg string) {
 	fmt.Fprintf(os.Stderr, msg)
 }
@@ -81,31 +75,27 @@ func init() {
 		os.Exit(0)
 	}
 
-	quit := false
 	if ehuri == "" {
 		stderr(
 			"Please provide the <API endpoint URI> as an argument or EHURI " +
 				"environment variable\n",
 		)
-		quit = true
+		defer os.Exit(1)
 	}
 	if *ehauth == "" {
 		stderr(
 			"Please provide <user uuid>:<secret API key> as an argument or EHAUTH " +
 				"environment variable\n",
 		)
-		quit = true
+		defer os.Exit(1)
 	} else {
 		userpass := strings.Split(*ehauth, ":")
 		if len(userpass) == 2 {
 			usr, pass = userpass[0], userpass[1]
 		} else {
-			quit = true
 			stderr("Malformed ehauth, please review it\n")
+			defer os.Exit(1)
 		}
-	}
-	if quit {
-		os.Exit(1)
 	}
 
 	for ehuri[len(ehuri)-1:] == "/" {
@@ -113,10 +103,11 @@ func init() {
 	}
 }
 
-func main() {
-	var err error
-	var stream io.Reader
-	stream = nil
+func query_api() error {
+	var (
+		err error
+		stream io.Reader
+	)
 	uri := strings.Join(append([]string{ehuri}, flag.Args()...), "/")
 	method := "GET"
 	contentType := "text/plain"
@@ -124,7 +115,9 @@ func main() {
 
 	if usefile != "" {
 		dat, err := ioutil.ReadFile(usefile)
-		check(err)
+		if err != nil {
+			return err
+		}
 		stream = strings.NewReader(string(dat))
 		method = "POST"
 		contentType = "application/octet-stream"
@@ -133,7 +126,9 @@ func main() {
 		strm := bufio.NewReader(os.Stdin)
 		x, err := strm.ReadString('\n')
 		for err != io.EOF {
-			check(err)
+			if err != nil {
+				return err
+			}
 			lines = append(lines, x)
 			x, err = strm.ReadString('\n')
 		}
@@ -143,7 +138,9 @@ func main() {
 	}
 
 	req, err := http.NewRequest(method, uri, stream)
-	check(err)
+	if err != nil {
+		return err
+	}
 	req.SetBasicAuth(usr, pass)
 	if usejson {
 		req.Header.Set("Accept", "application/json")
@@ -151,22 +148,38 @@ func main() {
 	req.Header.Set("Content-Type", contentType)
 	if verbose {
 		dump, err := httputil.DumpRequestOut(req, true)
-		check(err)
+		if err != nil {
+			return err
+		}
 		fmt.Printf("Request Dump:\n%s\n\n", dump)
 	}
 
 	resp, err := client.Do(req)
-	check(err)
+	if err != nil {
+		return err
+	}
 	defer resp.Body.Close()
 	if verbose {
 		dump, err := httputil.DumpResponse(resp, false)
-		check(err)
+		if err != nil {
+			return err
+		}
 		fmt.Printf("Response Dump:\n%s\n\n", dump)
 	}
 	buf := new(bytes.Buffer)
 	n, err := buf.ReadFrom(resp.Body)
-	check(err)
+	if err != nil {
+		return err
+	}
 	if n > 0 {
 		fmt.Println(buf)
+	}
+	return nil
+}
+
+func main() {
+	if err := query_api(); err != nil {
+		stderr(err.Error())
+		os.Exit(1)
 	}
 }
