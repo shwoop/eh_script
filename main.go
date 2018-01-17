@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -114,11 +113,10 @@ func query_api() error {
 	client := http.Client{}
 
 	if usefile != "" {
-		dat, err := ioutil.ReadFile(usefile)
+		stream, err = os.Open(usefile)
 		if err != nil {
 			return err
 		}
-		stream = strings.NewReader(string(dat))
 		method = "POST"
 		contentType = "application/octet-stream"
 	} else if usestdin {
