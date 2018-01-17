@@ -27,7 +27,7 @@ func stderr(msg string) {
 	fmt.Fprintf(os.Stderr, msg)
 }
 
-func init() {
+func gatherConfig() {
 	showVersion := flag.Bool(
 		"V",
 		false,
@@ -178,6 +178,7 @@ func query_api() error {
 }
 
 func main() {
+	gatherConfig()
 	if err := query_api(); err != nil {
 		stderr(err.Error())
 		os.Exit(1)
